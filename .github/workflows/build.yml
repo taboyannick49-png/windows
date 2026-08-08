@@ -21,7 +21,13 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Build Debug APK with System Gradle
+    - name: Init Gradle Project
+      run: |
+        if [ ! -f "build.gradle" ] && [ ! -f "settings.gradle" ]; then
+          gradle init --type basic --dsl groovy --project-name windows
+        fi
+
+    - name: Build Debug APK
       run: gradle assembleDebug
 
     - name: Upload APK
