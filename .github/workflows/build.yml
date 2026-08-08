@@ -21,20 +21,30 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Auto-Structure Android Project
+    - name: Setup Android Project & Gradle Wrapper
       run: |
-        # 1. Activation de AndroidX
+        # 1. Configuration des propriétés
         echo "android.useAndroidX=true" > gradle.properties
         echo "android.enableJetifier=true" >> gradle.properties
 
-        # 2. Arborescence standard
-        mkdir -p app/src/main/java app/src/main/res
+        # 2. Création de l'arborescence complète
+        mkdir -p app/src/main/java/com/example/windows
+        mkdir -p app/src/main/res/layout
+        mkdir -p app/src/main/res/values
 
-        # 3. Copie des fichiers Java/Kotlin existants
-        find . -maxdepth 4 -name "*.java" ! -path "./app/*" -exec cp {} app/src/main/java/ \; 2>/dev/null || true
-        find . -maxdepth 4 -name "*.kt" ! -path "./app/*" -exec cp {} app/src/main/java/ \; 2>/dev/null || true
+        # 3. Fichier strings.xml minimal
+        cat << 'EOF' > app/src/main/res/values/strings.xml
+        <resources>
+            <string name="app_name">Windows App</string>
+        </resources>
+        EOF
 
-        # 4. Gestion du AndroidManifest.xml (Copie ou Génération)
+        # 4. Copie des sources existantes si disponibles
+        find . -maxdepth 4 -name "*.java" ! -path "./app/*" -exec cp {} app/src/main/java/com/example/windows/ \; 2>/dev/null || true
+        find . -maxdepth 4 -name "*.kt" ! -path "./app/*" -exec cp {} app/src/main/java/com/example/windows/ \; 2>/dev/null || true
+        find . -maxdepth 4 -name "*.xml" ! -path "./app/*" ! -name "build.gradle*" -exec cp {} app/src/main/res/layout/ \; 2>/dev/null || true
+
+        # 5. Manifeste Android
         MANIFEST_PATH=$(find . -maxdepth 4 -name "AndroidManifest.xml" ! -path "./app/*" | head -n 1)
         if [ -n "$MANIFEST_PATH" ]; then
           cp "$MANIFEST_PATH" app/src/main/AndroidManifest.xml
@@ -45,24 +55,24 @@ jobs:
             <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
             <application
                 android:allowBackup="true"
-                android:label="Floating App"
+                android:label="@string/app_name"
                 android:supportsRtl="true"
                 android:theme="@style/Theme.AppCompat.Light.NoActionBar">
                 <activity
-                    android:name=".MainActivity"
+                    android:name="com.example.windows.MainActivity"
                     android:exported="true">
                     <intent-filter>
                         <action android:name="android.intent.action.MAIN" />
                         <category android:name="android.intent.category.LAUNCHER" />
                     </intent-filter>
                 </activity>
-                <service android:name=".FloatingService" android:enabled="true" android:exported="false" />
+                <service android:name="com.example.windows.FloatingService" android:enabled="true" android:exported="false" />
             </application>
         </manifest>
         EOF
         fi
 
-        # 5. Configuration Gradle
+        # 6. Structuration des fichiers Gradle
         cat << 'EOF' > settings.gradle
         pluginManagement {
             repositories { google(); mavenCentral(); gradlePluginPortal() }
@@ -105,8 +115,13 @@ jobs:
         }
         EOF
 
-    - name: Build APK
-      run: gradle :app:assembleDebug
+    - name: Setup Gradle 8.5
+      run: |
+        gradle wrapper --gradle-version 8.5
+        chmod +x gradlew
+
+    - name: Build Debug APK
+      run: ./gradlew :app:assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
