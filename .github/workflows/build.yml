@@ -1,9 +1,7 @@
-name: Build Android APK
+name: Build Universal Flutter APK
 
 on:
   push:
-    branches: [ "main", "master" ]
-  pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
@@ -15,23 +13,26 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up JDK 17
+    - name: Set up Java JDK
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Init Gradle Project
-      run: |
-        if [ ! -f "build.gradle" ] && [ ! -f "settings.gradle" ]; then
-          gradle init --type basic --dsl groovy --project-name windows
-        fi
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
 
-    - name: Build Debug APK
-      run: gradle assembleDebug
+    - name: Get dependencies
+      run: flutter pub get
 
-    - name: Upload APK
+    # Construit un APK unique contenant toutes les architectures processeur (ARM, ARM64, x86)
+    - name: Build APK
+      run: flutter build apk --debug
+
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-debug-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: build/app/outputs/flutter-apk/app-debug.apk
