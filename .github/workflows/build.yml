@@ -21,24 +21,83 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Create Minimal Gradle Structure
+    - name: Scaffold Android Structure
       run: |
-        if [ ! -f "settings.gradle" ]; then
-          echo "rootProject.name = 'windows'" > settings.gradle
-        fi
-        if [ ! -f "build.gradle" ]; then
-          echo "buildscript { repositories { google(); mavenCentral() }; dependencies { classpath 'com.android.tools.build:gradle:8.2.2' } }" > build.gradle
-          echo "allprojects { repositories { google(); mavenCentral() } }" >> build.gradle
+        # Configuration principale
+        cat << 'EOF' > settings.gradle
+        pluginManagement {
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+        dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        rootProject.name = "windows"
+        include ':app'
+        EOF
+
+        # Configuration du projet racine
+        cat << 'EOF' > build.gradle
+        plugins {
+            id 'com.android.application' version '8.2.2' apply false
+        }
+        EOF
+
+        # Configuration du module :app
+        mkdir -p app/src/main
+        cat << 'EOF' > app/build.gradle
+        plugins {
+            id 'com.android.application'
+        }
+
+        android {
+            namespace 'com.example.windows'
+            compileSdk 34
+
+            defaultConfig {
+                applicationId "com.example.windows"
+                minSdk 24
+                targetSdk 34
+                versionCode 1
+                versionName "1.0"
+            }
+
+            buildTypes {
+                release {
+                    minifyEnabled false
+                }
+            }
+        }
+
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+            implementation 'com.google.android.material:material:1.11.0'
+        }
+        EOF
+
+        # Déplacement des fichiers sources s'ils sont à la racine
+        if [ -d "java" ] || [ -d "kotlin" ] || [ -f "AndroidManifest.xml" ]; then
+          mkdir -p app/src/main/java app/src/main/res
+          [ -f "AndroidManifest.xml" ] && mv AndroidManifest.xml app/src/main/
+          [ -d "res" ] && mv res/* app/src/main/res/ 2>/dev/null || true
+          [ -d "java" ] && mv java/* app/src/main/java/ 2>/dev/null || true
         fi
 
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
     - name: Build APK with Gradle
-      run: gradle assembleDebug
+      run: gradle :app:assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-debug-apk
-        path: '**/build/outputs/apk/debug/*.apk'
+        path: 'app/build/outputs/apk/debug/*.apk'
