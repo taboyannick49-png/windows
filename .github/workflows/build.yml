@@ -27,15 +27,42 @@ jobs:
         echo "android.useAndroidX=true" > gradle.properties
         echo "android.enableJetifier=true" >> gradle.properties
 
-        # 2. Création de l'arborescence standard
+        # 2. Arborescence standard
         mkdir -p app/src/main/java app/src/main/res
 
-        # 3. Déplacement automatique des fichiers sources trouvés
-        find . -maxdepth 3 -name "AndroidManifest.xml" ! -path "./app/*" -exec mv {} app/src/main/ \; 2>/dev/null || true
-        find . -maxdepth 3 -name "*.java" ! -path "./app/*" -exec mv {} app/src/main/java/ \; 2>/dev/null || true
-        find . -maxdepth 3 -name "*.kt" ! -path "./app/*" -exec mv {} app/src/main/java/ \; 2>/dev/null || true
+        # 3. Copie des fichiers Java/Kotlin existants
+        find . -maxdepth 4 -name "*.java" ! -path "./app/*" -exec cp {} app/src/main/java/ \; 2>/dev/null || true
+        find . -maxdepth 4 -name "*.kt" ! -path "./app/*" -exec cp {} app/src/main/java/ \; 2>/dev/null || true
 
-        # 4. Fichier settings.gradle
+        # 4. Gestion du AndroidManifest.xml (Copie ou Génération)
+        MANIFEST_PATH=$(find . -maxdepth 4 -name "AndroidManifest.xml" ! -path "./app/*" | head -n 1)
+        if [ -n "$MANIFEST_PATH" ]; then
+          cp "$MANIFEST_PATH" app/src/main/AndroidManifest.xml
+        else
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+            <application
+                android:allowBackup="true"
+                android:label="Floating App"
+                android:supportsRtl="true"
+                android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                <activity
+                    android:name=".MainActivity"
+                    android:exported="true">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+                <service android:name=".FloatingService" android:enabled="true" android:exported="false" />
+            </application>
+        </manifest>
+        EOF
+        fi
+
+        # 5. Configuration Gradle
         cat << 'EOF' > settings.gradle
         pluginManagement {
             repositories { google(); mavenCentral(); gradlePluginPortal() }
@@ -48,14 +75,12 @@ jobs:
         include ':app'
         EOF
 
-        # 5. Fichier build.gradle racine
         cat << 'EOF' > build.gradle
         plugins {
             id 'com.android.application' version '8.2.2' apply false
         }
         EOF
 
-        # 6. Fichier app/build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
