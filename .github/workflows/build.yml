@@ -16,42 +16,42 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up JDK 17
-      uses: actions/setup-java@v5
+      uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Scaffold Android Structure
+    - name: Auto-Structure Android Project
       run: |
-        # Configuration principale
+        # 1. Création de l'arborescence standard
+        mkdir -p app/src/main/java app/src/main/res
+
+        # 2. Déplacement automatique des fichiers sources trouvés
+        find . -maxdepth 3 -name "AndroidManifest.xml" ! -path "./app/*" -exec mv {} app/src/main/ \; 2>/dev/null || true
+        find . -maxdepth 3 -name "*.java" ! -path "./app/*" -exec mv {} app/src/main/java/ \; 2>/dev/null || true
+        find . -maxdepth 3 -name "*.kt" ! -path "./app/*" -exec mv {} app/src/main/java/ \; 2>/dev/null || true
+
+        # 3. Fichier settings.gradle
         cat << 'EOF' > settings.gradle
         pluginManagement {
-            repositories {
-                google()
-                mavenCentral()
-                gradlePluginPortal()
-            }
+            repositories { google(); mavenCentral(); gradlePluginPortal() }
         }
         dependencyResolutionManagement {
             repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-            repositories {
-                google()
-                mavenCentral()
-            }
+            repositories { google(); mavenCentral() }
         }
         rootProject.name = "windows"
         include ':app'
         EOF
 
-        # Configuration du projet racine
+        # 4. Fichier build.gradle racine
         cat << 'EOF' > build.gradle
         plugins {
             id 'com.android.application' version '8.2.2' apply false
         }
         EOF
 
-        # Configuration du module :app
-        mkdir -p app/src/main
+        # 5. Fichier app/build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
@@ -68,12 +68,6 @@ jobs:
                 versionCode 1
                 versionName "1.0"
             }
-
-            buildTypes {
-                release {
-                    minifyEnabled false
-                }
-            }
         }
 
         dependencies {
@@ -82,18 +76,7 @@ jobs:
         }
         EOF
 
-        # Déplacement des fichiers sources s'ils sont à la racine
-        if [ -d "java" ] || [ -d "kotlin" ] || [ -f "AndroidManifest.xml" ]; then
-          mkdir -p app/src/main/java app/src/main/res
-          [ -f "AndroidManifest.xml" ] && mv AndroidManifest.xml app/src/main/
-          [ -d "res" ] && mv res/* app/src/main/res/ 2>/dev/null || true
-          [ -d "java" ] && mv java/* app/src/main/java/ 2>/dev/null || true
-        fi
-
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-
-    - name: Build APK with Gradle
+    - name: Build APK
       run: gradle :app:assembleDebug
 
     - name: Upload APK
