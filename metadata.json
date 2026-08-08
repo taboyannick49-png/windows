@@ -1,0 +1,6 @@
+{
+  "name": "Barre Latérale Flottante Android",
+  "description": "Code Android Kotlin/Java natif et simulateur de barre latérale flottante (Floating Sidebar Overlay) pour tablette avec raccourcis, presse-papier et paramètres.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
