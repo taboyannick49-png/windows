@@ -23,15 +23,19 @@ jobs:
 
     - name: Auto-Structure Android Project
       run: |
-        # 1. Création de l'arborescence standard
+        # 1. Activation de AndroidX
+        echo "android.useAndroidX=true" > gradle.properties
+        echo "android.enableJetifier=true" >> gradle.properties
+
+        # 2. Création de l'arborescence standard
         mkdir -p app/src/main/java app/src/main/res
 
-        # 2. Déplacement automatique des fichiers sources trouvés
+        # 3. Déplacement automatique des fichiers sources trouvés
         find . -maxdepth 3 -name "AndroidManifest.xml" ! -path "./app/*" -exec mv {} app/src/main/ \; 2>/dev/null || true
         find . -maxdepth 3 -name "*.java" ! -path "./app/*" -exec mv {} app/src/main/java/ \; 2>/dev/null || true
         find . -maxdepth 3 -name "*.kt" ! -path "./app/*" -exec mv {} app/src/main/java/ \; 2>/dev/null || true
 
-        # 3. Fichier settings.gradle
+        # 4. Fichier settings.gradle
         cat << 'EOF' > settings.gradle
         pluginManagement {
             repositories { google(); mavenCentral(); gradlePluginPortal() }
@@ -44,14 +48,14 @@ jobs:
         include ':app'
         EOF
 
-        # 4. Fichier build.gradle racine
+        # 5. Fichier build.gradle racine
         cat << 'EOF' > build.gradle
         plugins {
             id 'com.android.application' version '8.2.2' apply false
         }
         EOF
 
-        # 5. Fichier app/build.gradle
+        # 6. Fichier app/build.gradle
         cat << 'EOF' > app/build.gradle
         plugins {
             id 'com.android.application'
